@@ -23,21 +23,23 @@ db.serialize(function(){
   mobile TEXT NOT NULL,\
   password TEXT NOT NULL,\
   createdtime LONG NOT NULL,\
-  UNIQUE(EMAIL) ON CONFLICT IGNORE)");
+  UNIQUE(email) ON CONFLICT IGNORE)");
 
 // Create otp table
   db.run("CREATE TABLE IF NOT EXISTS user_otp (\
   id INTEGER PRIMARY KEY AUTOINCREMENT,\
   email TEXT NOT NULL,\
   otp TEXT NOT NULL,\
-  createdtime LONG NOT NULL)");
+  createdtime LONG NOT NULL,\
+  UNIQUE(email) ON CONFLICT REPLACE)");
 
 // Create user authentication table
   db.run("CREATE TABLE IF NOT EXISTS authentication (\
   id INTEGER PRIMARY KEY AUTOINCREMENT,\
   email TEXT NOT NULL,\
   token TEXT NOT NULL,\
-  authenticated_time LONG NOT NULL)");
+  authenticated_time LONG NOT NULL,\
+  UNIQUE(email) ON CONFLICT REPLACE)");
 
 });
 
@@ -46,16 +48,16 @@ db.serialize(function(){
 */
 app.get("/", function(req,res){
   res.send("Welcome to StayConnected");
-})
+});
 
 /**
-* Request for registration
+* Listen for registration
 * DB Reference : http://github.grumdrig.com/node-sqlite/ , https://gist.github.com/TravelingTechGuy/1117596
 */
 app.post("/registration/",function(req,res){
   body = req.body
   var timestamp = new Date().getTime();
-  var proceedRegistration = true;
+
   // Check if user email id exists already
   db.get("SELECT id FROM user where email = "+"'"+ body.email +"'" , function(err, row) {
     if(row !== undefined){
@@ -83,9 +85,63 @@ app.post("/registration/",function(req,res){
 
  });
 
-// Generate OTP for the registered user
- function generateOTP(email, mobile){
+/**
+* Listen to resend otp
+*/
+ app.get("/resendotp", function(req,res){
+   var email = req.param('email');
+   console.log("Resend OTP for "+email);
+     db.get("SELECT a.email, a.mobile, b.otp FROM user a LEFT JOIN user_otp b on a.email = b.email where a.email = "+"'"+ email +"'" , function(err, row) {
+       if(err){
+         console.log(err);
+         console.log("User not registered");
+         res.status(400);
+         res.send('User not registered');
+       }
+       else if(row !== undefined){
+         res.send("OTP send to the registered mobile number: "+row.mobile);
+         sendOTP(row.otp, row.mobile)
+       }
+     });
+ });
 
+ /**
+ * Listen to user Login/Authentication
+ */
+ app.post("/login", function(req, res){
+   body = req.body
+   var timestamp = new Date().getTime();
+
+   // Check if user is registered
+   db.get("SELECT * FROM user where email = "+"'"+ body.email +"'" , function(err, row) {
+     if(err){
+       console.log("Error Login :"+body.email);
+       res.status(400);
+       res.send("Error Login");
+     }
+     else if(row !== undefined){
+       if(row.password == body.password){
+         console.log(row.name+" Login sucessfull");
+         res.send("Login sucessfull");
+       }
+       else {
+         console.log("Incorrect password :"+body.email);
+         res.status(400);
+         res.send("Email and password does not match");
+       }
+
+     }
+     else{
+       console.log("Email does not exits :"+body.email);
+       res.status(400);
+       res.send("Email does not exits");
+     }
+   });
+
+ });
+
+// Generate and Send OTP for the registered user
+ function generateOTP(email, mobile){
           var timestamp = new Date().getTime();
          var otp = Math.floor(100000 + Math.random() * 900000)
          otp = otp.toString().substring(0, 4);
@@ -93,15 +149,21 @@ app.post("/registration/",function(req,res){
          db.run("INSERT INTO user_otp(email, otp, createdtime) VALUES\
          ('"+ email +"', '"+ otp +"', '"+ timestamp +"')");
 
-          client.messages.create({
-           to: "+65" + mobile,
-           from: "+12567438614",
-           body: "Your verification code is "+otp,
-       }, function(err, message) {
-           console.log(" Twilio error "+err);
-           console.log(" Twilio message "+message);
-       });
+         sendOTP(otp, mobile);
  }
+
+// Send the OTP to registered using Twilio
+ function sendOTP(otp, mobile){
+    client.messages.create({
+     to: "+65" + mobile,
+     from: "+12567438614",
+     body: "Your verification code is "+otp,
+ }, function(err, message) {
+     console.log(" Twilio error "+err);
+     console.log(" Twilio message "+message);
+ });
+ }
+
 
 var server = app.listen(port, host);
 

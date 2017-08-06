@@ -88,7 +88,7 @@ app.post("/registration/",function(req,res){
 /**
 * Listen to resend otp
 */
- app.get("/resendotp", function(req,res){
+ app.get("/otp/resend", function(req,res){
    var email = req.param('email');
    console.log("Resend OTP for "+email);
      db.get("SELECT a.email, a.mobile, b.otp FROM user a LEFT JOIN user_otp b on a.email = b.email where a.email = "+"'"+ email +"'" , function(err, row) {
@@ -106,9 +106,39 @@ app.post("/registration/",function(req,res){
  });
 
  /**
+ * Listen to user OTP verification
+ */
+ app.post("/otp/verify/", function(req, res){
+   body = req.body
+   db.get("SELECT otp from user_otp where email = "+"'"+body.email +"'" , function(err, row){
+     if(err){
+       console.log(err);
+       console.log("Error Verifying OTP");
+       res.status(400);
+       res.send("Error Verifying OTP");
+     }
+     else if(row == undefined){
+       console.log("Invalid user");
+       res.status(400);
+       res.send("Invalid user");
+     }
+     else{
+       if(row.otp == body.otp){
+         res.send("Verified otp for "+body.email)
+       }
+       else{
+         console.log("Invalid OTP for "+body.email);
+         res.status(400);
+         res.send("Invalid OTP");
+       }
+     }
+   });
+ });
+
+ /**
  * Listen to user Login/Authentication
  */
- app.post("/login", function(req, res){
+ app.post("/login/", function(req, res){
    body = req.body
    var timestamp = new Date().getTime();
 

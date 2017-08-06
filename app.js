@@ -10,6 +10,9 @@ var db = new sqlite3.Database('StayConnected.db');
 
 var host = "127.0.0.1";
 var port = 3000;
+var twilioAccountSid = "AC5ac5c103912388eca76424197a280ed8";
+var twilioAuthToken = "426aaba89d4404270ac26ae42b1e0ae1";
+var client = require('twilio')(twilioAccountSid, twilioAuthToken);
 
 db.serialize(function(){
   // Create user table
@@ -23,7 +26,7 @@ db.serialize(function(){
   UNIQUE(EMAIL) ON CONFLICT IGNORE)");
 
 // Create otp table
-  db.run("CREATE TABLE IF NOT EXISTS otp (\
+  db.run("CREATE TABLE IF NOT EXISTS user_otp (\
   id INTEGER PRIMARY KEY AUTOINCREMENT,\
   email TEXT NOT NULL,\
   otp TEXT NOT NULL,\
@@ -63,18 +66,42 @@ app.post("/registration/",function(req,res){
     else{
       db.run("INSERT INTO user(name, email, mobile, password, createdtime) VALUES\
       ('"+ body.name +"', '"+ body.email +"', '"+ body.mobile +"', '"+ body.password +"', '"+ timestamp +"')");
+
       response = {
           name:body.name,
           email:body.email,
           mobile:body.mobile,
           createdtime:timestamp
        };
+
+       generateOTP(body.email, body.mobile)
+
        console.log(response);
        res.end(JSON.stringify(response));
     }
   });
 
  });
+
+// Generate OTP for the registered user
+ function generateOTP(email, mobile){
+
+          var timestamp = new Date().getTime();
+         var otp = Math.floor(100000 + Math.random() * 900000)
+         otp = otp.toString().substring(0, 4);
+
+         db.run("INSERT INTO user_otp(email, otp, createdtime) VALUES\
+         ('"+ email +"', '"+ otp +"', '"+ timestamp +"')");
+
+          client.messages.create({
+           to: "+65" + mobile,
+           from: "+12567438614",
+           body: "Your verification code is "+otp,
+       }, function(err, message) {
+           console.log(" Twilio error "+err);
+           console.log(" Twilio message "+message);
+       });
+ }
 
 var server = app.listen(port, host);
 

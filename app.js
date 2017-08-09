@@ -76,7 +76,8 @@ app.post("/registration/",function(req,res){
           createdtime:timestamp
        };
 
-       generateOTP(body.email, body.mobile)
+       var otp = generateOTP(body.email)
+       sendOTP(otp, body.mobile);
 
        console.log(response);
        res.end(JSON.stringify(response));
@@ -88,7 +89,7 @@ app.post("/registration/",function(req,res){
 /**
 * Listen to resend otp
 */
- app.get("/otp/resend", function(req,res){
+ app.get("/otp/resend/", function(req,res){
    var email = req.param('email');
    console.log("Resend OTP for "+email);
      db.get("SELECT a.email, a.mobile, b.otp FROM user a LEFT JOIN user_otp b on a.email = b.email where a.email = "+"'"+ email +"'" , function(err, row) {
@@ -101,6 +102,11 @@ app.post("/registration/",function(req,res){
        else if(row !== undefined){
          res.send("OTP send to the registered mobile number: "+row.mobile);
          sendOTP(row.otp, row.mobile)
+       }
+       else {
+         console.log("User not registered");
+         res.status(400);
+         res.send('User not registered');
        }
      });
  });
@@ -170,8 +176,8 @@ app.post("/registration/",function(req,res){
 
  });
 
-// Generate and Send OTP for the registered user
- function generateOTP(email, mobile){
+// Generate OTP for the registered user
+ function generateOTP(email){
           var timestamp = new Date().getTime();
          var otp = Math.floor(100000 + Math.random() * 900000)
          otp = otp.toString().substring(0, 4);
@@ -179,7 +185,7 @@ app.post("/registration/",function(req,res){
          db.run("INSERT INTO user_otp(email, otp, createdtime) VALUES\
          ('"+ email +"', '"+ otp +"', '"+ timestamp +"')");
 
-         sendOTP(otp, mobile);
+         return otp;
  }
 
 // Send the OTP to registered using Twilio

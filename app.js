@@ -62,11 +62,11 @@ app.post("/registration/",function(req,res){
   var timestamp = new Date().getTime();
 
   // Check if user email id exists already
-  db.get("SELECT id FROM user where email = "+"'"+ body.email +"'" , function(err, row) {
+  db.get("SELECT id FROM user WHERE email = "+"'"+ body.email +"' OR mobile = "+"'"+ body.mobile +"'" , function(err, row) {
     if(row !== undefined){
-      console.log("User exists Already");
+      console.log("User exists already");
       res.status(409);
-      res.send('User exists Already');
+      res.send('User exists already');
     }
     else{
       db.run("INSERT INTO user(name, email, mobile, password, createdtime) VALUES\
@@ -137,7 +137,7 @@ app.post("/registration/",function(req,res){
        }
        else{
          console.log("Invalid OTP for "+body.email);
-         res.status(400);
+         res.status(404);
          res.send("Invalid OTP");
        }
      }
@@ -165,14 +165,14 @@ app.post("/registration/",function(req,res){
        }
        else {
          console.log("Incorrect password :"+body.email);
-         res.status(400);
+         res.status(401);
          res.send("Email and password does not match");
        }
 
      }
      else{
        console.log("Email does not exits :"+body.email);
-       res.status(400);
+       res.status(404);
        res.send("Email does not exits");
      }
    });

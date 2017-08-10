@@ -1,10 +1,13 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var sqlite3 = require('sqlite3').verbose();
+var multer = require('multer'); //multer is middleware used to handle multipart form data
+var fs = require('fs');
 
 var app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+var uploader = multer({ dest: "uploads/" });
 
 var db = new sqlite3.Database('StayConnected.db');
 
@@ -174,6 +177,37 @@ app.post("/registration/",function(req,res){
      }
    });
 
+ });
+
+
+ /**
+ * File upload Reference
+ * https://medium.com/technoetics/handling-file-upload-in-nodejs-7a4bb9f09a27
+ * https://evdokimovm.github.io/javascript/nodejs/expressjs/multer/2016/11/03/Upload-files-to-server-using-NodeJS-and-Multer-package-filter-upload-files-by-extension.html
+ */
+ app.post('/uploads/', uploader.single("avatar"), function(req, res) {
+   body = req.body;
+   if(req.file == undefined || body.email == undefined){
+     console.log("File not added");
+     res.status(400);
+     res.send("File not added");
+   } else if (fs.existsSync(req.file.path)){
+   console.dir(req.file);
+   console.log(body.email);
+
+       fs.rename("./"+req.file.path, './uploads/'+body.email+"_avatar", function (err) {
+       if (err) {
+         throw err;
+       }else{
+         res.send("Successfully uploaded")
+       }
+    });
+
+ } else{
+   console.log("Error uploading file");
+   res.status(400);
+   res.send("Error uploading file");
+ }
  });
 
 // Generate OTP for the registered user

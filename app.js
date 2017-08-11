@@ -225,7 +225,7 @@ app.post("/registration/",function(req,res){
 // Send the OTP to registered using Twilio
  function sendOTP(otp, mobile){
     client.messages.create({
-     to: "+65" + mobile,
+     to: mobile,
      from: "+12567438614",
      body: "Your verification code is "+otp,
  }, function(err, message) {
